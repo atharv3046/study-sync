@@ -19,6 +19,17 @@ const notesTextarea = document.getElementById('notesTextarea');
 const saveNotesBtn = document.getElementById('saveNotesBtn');
 const chatButton = document.getElementById('chatButton');
 const loadingOverlay = document.getElementById('loadingOverlay');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const authModal = document.getElementById('authModal');
+const modalTitle = document.getElementById('modalTitle');
+const authForm = document.getElementById('authForm');
+const submitAuthBtn = document.getElementById('submitAuthBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const mainContent = document.getElementById('mainContent');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
 
 // State
 let darkMode = true;
@@ -28,6 +39,7 @@ let pomodoroInterval = null;
 let timerSeconds = 25 * 60;
 let isPomodoroRunning = false;
 let isStudyTime = true;
+let isAuthenticated = !!localStorage.getItem('user');
 
 // YouTube API Key - Replace with your own key or move to a backend
 const YOUTUBE_API_KEY = 'AIzaSyDPkxHAOn6qIKViBI3pHK2u4aTzQE8pgfc'; // Replace with a valid key or use a backend proxy
@@ -70,6 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load Saved Data
   loadSavedData();
+
+  // Authentication
+  loginBtn.addEventListener('click', () => showAuthModal('Login'));
+  signupBtn.addEventListener('click', () => showAuthModal('Sign Up'));
+  logoutBtn.addEventListener('click', logout);
+  authForm.addEventListener('submit', handleAuth);
+  closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+  checkAuthStatus();
 });
 
 // Theme Toggle
@@ -88,13 +109,13 @@ function setupRadioButtons() {
   radio1.addEventListener('click', () => {
     radio1.classList.add('checked');
     radio2.classList.remove('checked');
-    if (playlistData) generateStudyPlan();
+    if (playlistData && isAuthenticated) generateStudyPlan();
   });
 
   radio2.addEventListener('click', () => {
     radio2.classList.add('checked');
     radio1.classList.remove('checked');
-    if (playlistData) generateStudyPlan();
+    if (playlistData && isAuthenticated) generateStudyPlan();
   });
 }
 
@@ -116,13 +137,17 @@ function setupVideoHandlers() {
     }
 
     const videoElement = e.target.closest('.bg-dark-200.rounded-lg.p-3');
-    if (videoElement) {
+    if (videoElement && isAuthenticated) {
       handleVideoClick(videoElement);
     }
   });
 }
 
 function handleVideoCheckboxClick(checkbox) {
+  if (!isAuthenticated) {
+    showMessage('Please log in to mark videos as watched.', 'error');
+    return;
+  }
   checkbox.classList.toggle('checked');
   const item = checkbox.closest('.bg-dark-200.rounded-lg.p-3');
   const title = item.querySelector('h4').textContent;
@@ -155,7 +180,7 @@ function setupStudyHoursRange() {
     const value = parseFloat(studyHoursRange.value);
     hoursInput.value = value;
     studyHoursOutput.textContent = `${value} hours`;
-    if (playlistData) generateStudyPlan();
+    if (playlistData && isAuthenticated) generateStudyPlan();
   });
   hoursInput.value = studyHoursRange.value;
   studyHoursOutput.textContent = `${hoursInput.value} hours`;
@@ -170,6 +195,10 @@ function setupPomodoroTimer() {
 
 // Fetch Playlist with YouTube API
 async function fetchPlaylist() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to fetch a playlist.', 'error');
+    return;
+  }
   const url = playlistUrlInput.value.trim();
   if (!url) {
     showMessage('Please enter a YouTube playlist URL', 'error');
@@ -289,9 +318,9 @@ function parseYouTubeDuration(duration) {
 
 // Update Overview
 function updateOverview(totalHours = playlistData?.totalDuration || 0) {
-  if (!playlistData) {
+  if (!playlistData || !isAuthenticated) {
     document.getElementById('playlistTitle').textContent = 'Your Study Plan';
-    document.getElementById('playlistSubtitle').textContent = 'Add a YouTube playlist to get started';
+    document.getElementById('playlistSubtitle').textContent = 'Please log in and add a YouTube playlist to get started';
     document.getElementById('totalDuration').textContent = '0 hours';
     document.getElementById('completionDate').textContent = '-';
     document.getElementById('dailyCommitment').textContent = '0 hours/day';
@@ -333,7 +362,7 @@ function updateOverview(totalHours = playlistData?.totalDuration || 0) {
 
 // Update Today's Schedule
 function updateTodaysSchedule(dailyHours) {
-  if (!playlistData) {
+  if (!playlistData || !isAuthenticated) {
     document.getElementById('sessionTime').textContent = 'Add a playlist to see schedule';
     document.getElementById('sessionDuration').textContent = '-';
     document.getElementById('scheduleList').innerHTML = '<div class="text-gray-400 text-sm">Add a playlist to see schedule</div>';
@@ -384,16 +413,10 @@ function updateTodaysSchedule(dailyHours) {
         .join('')
     : '<div class="text-gray-400 text-sm">No videos scheduled for today</div>';
 }
-function formatTime(hours) {
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
-  const minutes = Math.round((hours % 1) * 60);
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
 
 // Render Video List
 function renderVideoList() {
-  if (!playlistData) return;
+  if (!playlistData || !isAuthenticated) return;
   videoItemsContainer.innerHTML = '';
   playlistData.videos.forEach((video, index) => {
     const item = document.createElement('div');
@@ -417,8 +440,8 @@ function renderVideoList() {
 
 // Generate Study Plan
 function generateStudyPlan() {
-  if (!playlistData || isNaN(playlistData.totalDuration)) {
-    showMessage('Invalid playlist data. Please reload the playlist.', 'error');
+  if (!playlistData || isNaN(playlistData.totalDuration) || !isAuthenticated) {
+    showMessage('Please log in and reload the playlist.', 'error');
     return;
   }
 
@@ -428,7 +451,7 @@ function generateStudyPlan() {
 
 // Update Progress
 function updateProgress() {
-  if (!playlistData || !playlistData.videos) {
+  if (!playlistData || !isAuthenticated) {
     progressBar.style.width = '0%';
     progressText.textContent = '0/0 videos';
     return;
@@ -444,6 +467,10 @@ function updateProgress() {
 
 // Start Pomodoro
 function startPomodoro() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to use the Pomodoro timer.', 'error');
+    return;
+  }
   if (isPomodoroRunning) return;
   isPomodoroRunning = true;
   pomodoroStartBtn.disabled = true;
@@ -476,6 +503,10 @@ function startPomodoro() {
 
 // Reset Pomodoro
 function resetPomodoro() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to use the Pomodoro timer.', 'error');
+    return;
+  }
   clearInterval(pomodoroInterval);
   isPomodoroRunning = false;
   isStudyTime = true;
@@ -488,6 +519,10 @@ function resetPomodoro() {
 
 // Save Plan
 function savePlan() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to save your plan.', 'error');
+    return;
+  }
   if (!playlistData) {
     showMessage('No plan to save', 'error');
     return;
@@ -506,6 +541,10 @@ function savePlan() {
 
 // Share Plan
 function sharePlan() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to share your plan.', 'error');
+    return;
+  }
   if (!playlistData) {
     showMessage('No plan to share', 'error');
     return;
@@ -542,6 +581,10 @@ function copyToClipboard(text) {
 
 // Save Notes
 function saveNotes() {
+  if (!isAuthenticated) {
+    showMessage('Please log in to save notes.', 'error');
+    return;
+  }
   const notes = notesTextarea.value;
   localStorage.setItem('studyNotes', notes);
   showMessage('Notes saved successfully!', 'success');
@@ -558,9 +601,11 @@ function loadSavedData() {
     studyHoursRange.value = plan.hours;
     studyHoursOutput.textContent = `${plan.hours} hours`;
     plan.watchedVideos.forEach((video) => watchedVideos.add(video));
-    updateOverview();
-    updateAchievements();
-    updateStats();
+    if (isAuthenticated) {
+      updateOverview();
+      updateAchievements();
+      updateStats();
+    }
   }
   const savedNotes = localStorage.getItem('studyNotes');
   if (savedNotes) notesTextarea.value = savedNotes;
@@ -568,7 +613,7 @@ function loadSavedData() {
 
 // Update Achievements
 function updateAchievements() {
-  if (!playlistData) return;
+  if (!playlistData || !isAuthenticated) return;
   const totalVideos = playlistData.totalVideos || 0;
   const watchedCount = watchedVideos.size;
   const progress = totalVideos > 0 ? (watchedCount / totalVideos) * 100 : 0;
@@ -585,7 +630,7 @@ function updateAchievements() {
 
 // Update Stats
 function updateStats() {
-  if (!playlistData) {
+  if (!playlistData || !isAuthenticated) {
     document.getElementById('totalStudyTime').textContent = '0h 0m';
     document.getElementById('videosCompleted').textContent = '0/0';
     document.getElementById('averageDailyTime').textContent = '0h 0m';
@@ -619,6 +664,7 @@ function showMessage(message, type) {
 
 // Track Pomodoro Session
 function trackPomodoroSession() {
+  if (!isAuthenticated) return;
   let sessions = parseInt(localStorage.getItem('pomodoroSessions') || '0');
   sessions++;
   localStorage.setItem('pomodoroSessions', sessions);
@@ -631,7 +677,7 @@ setInterval(() => {
   const today = new Date();
   const todayStr = today.toDateString();
 
-  if (lastDateStr && watchedVideos.size > 0) {
+  if (lastDateStr && watchedVideos.size > 0 && isAuthenticated) {
     const lastDate = new Date(lastDateStr);
     const diffDays = (today - lastDate) / (1000 * 60 * 60 * 24);
     let streak = parseInt(localStorage.getItem('studyStreak') || '0');
@@ -645,7 +691,7 @@ setInterval(() => {
     localStorage.setItem('studyStreak', streak);
     localStorage.setItem('lastStudyDate', todayStr);
     updateStats();
-  } else if (watchedVideos.size > 0) {
+  } else if (watchedVideos.size > 0 && isAuthenticated) {
     localStorage.setItem('studyStreak', '1');
     localStorage.setItem('lastStudyDate', todayStr);
     updateStats();
@@ -655,7 +701,7 @@ setInterval(() => {
 // Load Pomodoro State
 function loadPomodoroState() {
   const state = localStorage.getItem('pomodoroState');
-  if (state) {
+  if (state && isAuthenticated) {
     const { isRunning, startTime, timerSeconds: savedSeconds, isStudyTime: savedStudyTime } = JSON.parse(state);
     if (isRunning) {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -673,7 +719,7 @@ function loadPomodoroState() {
 }
 
 window.addEventListener('beforeunload', () => {
-  if (isPomodoroRunning) {
+  if (isPomodoroRunning && isAuthenticated) {
     localStorage.setItem(
       'pomodoroState',
       JSON.stringify({
@@ -687,3 +733,66 @@ window.addEventListener('beforeunload', () => {
     localStorage.removeItem('pomodoroState');
   }
 });
+
+// Authentication Functions
+function showAuthModal(mode) {
+  modalTitle.textContent = mode;
+  submitAuthBtn.textContent = mode;
+  authModal.classList.remove('hidden');
+}
+
+function handleAuth(e) {
+  e.preventDefault();
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!username || !password) {
+    showMessage('Username and password are required.', 'error');
+    return;
+  }
+
+  const users = JSON.parse(localStorage.getItem('users') || '{}');
+  if (modalTitle.textContent === 'Sign Up') {
+    if (users[username]) {
+      showMessage('Username already exists.', 'error');
+      return;
+    }
+    users[username] = btoa(password); // Simple hash for demo
+    localStorage.setItem('users', JSON.stringify(users));
+    showMessage('Sign up successful! Please log in.', 'success');
+  } else { // Login
+    if (!users[username] || users[username] !== btoa(password)) {
+      showMessage('Invalid username or password.', 'error');
+      return;
+    }
+    localStorage.setItem('user', username);
+    isAuthenticated = true;
+    showMessage('Login successful!', 'success');
+  }
+  authModal.classList.add('hidden');
+  usernameInput.value = '';
+  passwordInput.value = '';
+  checkAuthStatus();
+}
+
+function logout() {
+  localStorage.removeItem('user');
+  isAuthenticated = false;
+  playlistData = null;
+  watchedVideos.clear();
+  updateOverview();
+  renderVideoList();
+  checkAuthStatus();
+  showMessage('Logged out successfully.', 'success');
+}
+
+function checkAuthStatus() {
+  isAuthenticated = !!localStorage.getItem('user');
+  loginBtn.classList.toggle('hidden', isAuthenticated);
+  signupBtn.classList.toggle('hidden', isAuthenticated);
+  logoutBtn.classList.toggle('hidden', !isAuthenticated);
+  mainContent.classList.toggle('hidden', !isAuthenticated);
+  if (!isAuthenticated) {
+    updateOverview();
+    renderVideoList();
+  }
+}

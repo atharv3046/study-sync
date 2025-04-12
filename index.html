@@ -183,6 +183,9 @@
       .bg-gradient-to-r {
         background: linear-gradient(to right, #10B981, #3B82F6);
       }
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body class="dark-mode min-h-screen bg-dark-300 text-white">
@@ -207,18 +210,27 @@
           </label>
           <i class="ri-sun-line text-white ri-lg"></i>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3" id="authButtons">
           <button
-            class="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-dark-100 rounded-button whitespace-nowrap"
+            class="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-dark-100 rounded-button whitespace-nowrap hidden"
+            id="logoutBtn"
           >
-            <i class="ri-question-line text-white ri-lg"></i>
-            <span>Help</span>
+            <i class="ri-logout-box-line text-white ri-lg"></i>
+            <span>Logout</span>
           </button>
           <button
             class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-opacity-90 rounded-button whitespace-nowrap"
+            id="loginBtn"
           >
             <i class="ri-user-line text-white ri-lg"></i>
-            <span>Sign In</span>
+            <span>Login</span>
+          </button>
+          <button
+            class="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-opacity-90 rounded-button whitespace-nowrap"
+            id="signupBtn"
+          >
+            <i class="ri-user-add-line text-white ri-lg"></i>
+            <span>Sign Up</span>
           </button>
         </div>
       </div>
@@ -229,8 +241,48 @@
       <div class="bg-red-500 text-white px-4 py-2 rounded text-sm"></div>
     </div>
 
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-dark-300 bg-opacity-90 flex items-center justify-center z-50 hidden">
+      <div class="bg-dark-200 p-6 rounded-lg w-96">
+        <h2 id="modalTitle" class="text-xl font-semibold mb-4"></h2>
+        <form id="authForm">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2" for="username">Username</label>
+            <input
+              type="text"
+              id="username"
+              class="w-full bg-dark-100 border-none rounded p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+              required
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2" for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              class="w-full bg-dark-100 border-none rounded p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            id="submitAuthBtn"
+            class="w-full bg-primary hover:bg-opacity-90 py-2 rounded-button font-medium"
+          >
+            Submit
+          </button>
+        </form>
+        <button
+          id="closeModalBtn"
+          class="mt-4 text-gray-400 hover:text-white"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+
     <!-- Main Content -->
-    <main class="pt-16 flex min-h-screen">
+    <main class="pt-16 flex min-h-screen" id="mainContent">
       <!-- Left Panel (Input Form) -->
       <section
         class="w-1/4 border-r border-dark-100 h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar p-6"
