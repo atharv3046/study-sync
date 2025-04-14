@@ -30,6 +30,10 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const mainContent = document.getElementById('mainContent');
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
+const userProfile = document.getElementById('userProfile');
+const userAvatar = document.getElementById('userAvatar');
+const userName = document.getElementById('userName');
+const googleSignInContainer = document.getElementById('googleSignInContainer');
 
 // State
 let darkMode = true;
@@ -42,10 +46,16 @@ let isStudyTime = true;
 let isAuthenticated = !!localStorage.getItem('user');
 
 // YouTube API Key - Replace with your own key or move to a backend
-const YOUTUBE_API_KEY = 'AIzaSyDPkxHAOn6qIKViBI3pHK2u4aTzQE8pgfc'; // Replace with a valid key or use a backend proxy
+const YOUTUBE_API_KEY = 'AIzaSyDPkxHAOn6qIKViBI3pHK2u4aTzQE8pgfc'; // Replace with a valid key
+
+// Google Client ID - Replace with your own
+const GOOGLE_CLIENT_ID = '267992965998-2roctmfodhiddkrcidb989e6pnr0iogq.app.googleusercontent.com'; // Replace with your Google Client ID
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Google Sign-In
+  initializeGoogleSignIn();
+
   // Theme Toggle
   themeToggle.checked = darkMode;
   themeToggle.addEventListener('change', toggleTheme);
@@ -92,6 +102,133 @@ document.addEventListener('DOMContentLoaded', () => {
 
   checkAuthStatus();
 });
+
+// Initialize Google Sign-In
+function initializeGoogleSignIn() {
+  if (!window.google) {
+    console.error('Google Sign-In library not loaded');
+    return;
+  }
+
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleSignIn,
+    ux_mode: 'popup',
+    context: 'signin'
+  });
+
+  google.accounts.id.renderButton(
+    googleSignInContainer,
+    {
+      type: 'standard',
+      theme: 'filled_blue',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+      width: '300'
+    }
+  );
+}
+
+// Handle Google Sign-In
+function handleGoogleSignIn(response) {
+  const { credential } = response;
+  
+  // Decode the JWT to get user info (client-side only, in production verify on backend)
+  const payload = JSON.parse(atob(credential.split('.')[1]));
+  
+  // Create a user account with Google data
+  const username = payload.email.split('@')[0] + '_google';
+  const users = JSON.parse(localStorage.getItem('users') || '{}');
+  
+  if (!users[username]) {
+    // Create a new user with Google auth
+    users[username] = 'google_auth'; // Special marker for Google-authenticated users
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+  
+  // Log the user in
+  localStorage.setItem('user', username);
+  localStorage.setItem('userEmail', payload.email);
+  localStorage.setItem('userName', payload.name || username);
+  localStorage.setItem('userPicture', payload.picture || '');
+  
+  isAuthenticated = true;
+  showMessage('Google login successful!', 'success');
+  authModal.classList.add('hidden');
+  checkAuthStatus();
+}
+
+// Update User Profile in UI
+function updateUserProfile() {
+  if (!isAuthenticated) return;
+  
+  const email = localStorage.getItem('userEmail');
+  const name = localStorage.getItem('userName');
+  const picture = localStorage.getItem('userPicture');
+  
+  if (name || email) {
+    userProfile.classList.remove('hidden');
+    userName.textContent = name || email.split('@')[0];
+    
+    if (picture) {
+      userAvatar.src = picture;
+    } else {
+      userAvatar.src = 'https://www.gravatar.com/avatar/?d=mp';
+    }
+    
+    loginBtn.classList.add('hidden');
+    signupBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+  }
+}
+
+// Check Authentication Status
+function checkAuthStatus() {
+  isAuthenticated = !!localStorage.getItem('user');
+  
+  if (isAuthenticated) {
+    updateUserProfile();
+    mainContent.classList.remove('hidden');
+  } else {
+    userProfile.classList.add('hidden');
+    loginBtn.classList.remove('hidden');
+    signupBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    mainContent.classList.add('hidden');
+    
+    // Clear Google auth data on logout
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userPicture');
+  }
+  
+  if (!isAuthenticated) {
+    updateOverview();
+    renderVideoList();
+  }
+}
+
+// Logout Function
+function logout() {
+  // Sign out from Google
+  if (window.google && google.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  
+  localStorage.removeItem('user');
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userPicture');
+  isAuthenticated = false;
+  playlistData = null;
+  watchedVideos.clear();
+  updateOverview();
+  renderVideoList();
+  checkAuthStatus();
+  showMessage('Logged out successfully.', 'success');
+}
 
 // Theme Toggle
 function toggleTheme() {
@@ -416,7 +553,10 @@ function updateTodaysSchedule(dailyHours) {
 
 // Render Video List
 function renderVideoList() {
-  if (!playlistData || !isAuthenticated) return;
+  if (!playlistData || !isAuthenticated) {
+    videoItemsContainer.innerHTML = '';
+    return;
+  }
   videoItemsContainer.innerHTML = '';
   playlistData.videos.forEach((video, index) => {
     const item = document.createElement('div');
@@ -772,27 +912,4 @@ function handleAuth(e) {
   usernameInput.value = '';
   passwordInput.value = '';
   checkAuthStatus();
-}
-
-function logout() {
-  localStorage.removeItem('user');
-  isAuthenticated = false;
-  playlistData = null;
-  watchedVideos.clear();
-  updateOverview();
-  renderVideoList();
-  checkAuthStatus();
-  showMessage('Logged out successfully.', 'success');
-}
-
-function checkAuthStatus() {
-  isAuthenticated = !!localStorage.getItem('user');
-  loginBtn.classList.toggle('hidden', isAuthenticated);
-  signupBtn.classList.toggle('hidden', isAuthenticated);
-  logoutBtn.classList.toggle('hidden', !isAuthenticated);
-  mainContent.classList.toggle('hidden', !isAuthenticated);
-  if (!isAuthenticated) {
-    updateOverview();
-    renderVideoList();
-  }
 }
