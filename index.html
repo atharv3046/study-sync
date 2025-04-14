@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script>
       tailwind.config = {
@@ -178,6 +179,7 @@
         }
         100% {
           box-shadow: 0 0 0 0 rgba(76, 139, 245, 0);
+
         }
       }
       .bg-gradient-to-r {
@@ -185,6 +187,38 @@
       }
       .hidden {
         display: none;
+      }
+      /* Google Sign-In Button Styling */
+      #googleSignInContainer {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0;
+      }
+      .divider {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+      }
+      .divider::before, .divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .divider-text {
+        padding: 0 10px;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.8rem;
+      }
+      .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
       }
     </style>
   </head>
@@ -211,6 +245,10 @@
           <i class="ri-sun-line text-white ri-lg"></i>
         </div>
         <div class="flex items-center gap-3" id="authButtons">
+          <div id="userProfile" class="user-profile hidden">
+            <img id="userAvatar" src="" alt="User" class="user-avatar">
+            <span id="userName"></span>
+          </div>
           <button
             class="flex items-center gap-2 px-4 py-2 bg-transparent hover:bg-dark-100 rounded-button whitespace-nowrap hidden"
             id="logoutBtn"
@@ -272,6 +310,10 @@
             Submit
           </button>
         </form>
+        <div class="divider">
+          <span class="divider-text">OR</span>
+        </div>
+        <div id="googleSignInContainer"></div>
         <button
           id="closeModalBtn"
           class="mt-4 text-gray-400 hover:text-white"
