@@ -112,8 +112,7 @@ function initializeGoogleSignIn() {
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleGoogleSignIn,
-    ux_mode: 'popup',
-    context: 'signin'
+    ux_mode: 'popup', // No redirect_uri needed for popup mode
   });
 
   google.accounts.id.renderButton(
@@ -138,8 +137,17 @@ function handleGoogleSignIn(response) {
   const payload = JSON.parse(atob(credential.split('.')[1]));
   
   // Create a user account with Google data
-  const username = payload.email.split('@')[0] + '_google';
+  const email = payload.email || '';
+  const name = payload.name || username;
+  const picture = payload.picture || '';
+  
+  const username = email.split('@')[0] + '_google';
   const users = JSON.parse(localStorage.getItem('users') || '{}');
+  
+  if (users[username] && users[username] !== 'google_auth') {
+    showMessage('This email is already registered with a non-Google account.', 'error');
+    return;
+  }
   
   if (!users[username]) {
     // Create a new user with Google auth
@@ -149,9 +157,9 @@ function handleGoogleSignIn(response) {
   
   // Log the user in
   localStorage.setItem('user', username);
-  localStorage.setItem('userEmail', payload.email);
-  localStorage.setItem('userName', payload.name || username);
-  localStorage.setItem('userPicture', payload.picture || '');
+  localStorage.setItem('userEmail', email);
+  localStorage.setItem('userName', name || username);
+  localStorage.setItem('userPicture', picture || '');
   
   isAuthenticated = true;
   showMessage('Google login successful!', 'success');
@@ -213,6 +221,9 @@ function checkAuthStatus() {
 function logout() {
   // Sign out from Google
   if (window.google && google.accounts) {
+    google.accounts.id.revoke(localStorage.getItem('userEmail'), () => {
+      console.log('Google session revoked');
+    });
     google.accounts.id.disableAutoSelect();
   }
   
