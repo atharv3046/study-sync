@@ -49,8 +49,7 @@ let isAuthenticated = !!localStorage.getItem('user');
 const YOUTUBE_API_KEY = 'AIzaSyDPkxHAOn6qIKViBI3pHK2u4aTzQE8pgfc'; // Replace with a valid key
 
 // Google Client ID - Replace with your own
-const GOOGLE_CLIENT_ID = '267992965998-2roctmfodhiddkrcidb989e6pnr0iogq.apps.googleusercontent.com'; // Replace with your Google Client ID
-
+const GOOGLE_CLIENT_ID = '267992965998-2roctmfodhiddkrcidb989e6pnr0iogq.app.googleusercontent.com'; // Replace with a valid client ID
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Google Sign-In
